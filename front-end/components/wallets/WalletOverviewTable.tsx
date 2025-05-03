@@ -20,7 +20,7 @@ const WalletOverviewTable: React.FC<Props> = ({ wallets }: Props) => {
         // Fetch the users from the API
         const fetchUsers = async () => {
             try {
-                const response = await fetch('http://localhost:3000/users');
+                const response = await fetch('http://localhost:3000/users/me');
                 if (!response.ok) {
                     throw new Error('Failed to fetch users');
                 }

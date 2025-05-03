@@ -29,11 +29,19 @@ const getUserById = async(userId: number) => {
     return user;
 }
 
+const findByEmail = async(userEmail: string) => {
+    if (await userDb.userExists(userEmail)){
+        const user = await userDb.getUserByEmail(userEmail);
+        return user;
+    }
+    return null;
+}
+
 const createUser = async (userInput: UserInput): Promise<User> => {
     if (!userInput.email) throw new Error('Email is required');
 
     // Check if the user already exists
-    const existingUser = await userDb.getUserByEmail(userInput.email);
+    const existingUser = await userDb.userExists(userInput.email);
     if (existingUser) throw new Error('User with this email already exists');
 
     // Hash the password
@@ -68,4 +76,4 @@ const createUser = async (userInput: UserInput): Promise<User> => {
 
     return result as any;
 };
-export default { getAllUsers, createUser, getUserById };
+export default { getAllUsers, createUser, getUserById, findByEmail };

@@ -67,10 +67,16 @@ const createTransaction = async (transactionData: {
   const getAllTransactions = async () => {
     return await transactionDb.getAllTransactions();
   };
+
+  const getTransactionByUserId = async (userId: number) => {
+    const user = await transactionDb.getTransactionByUserId(userId);
+    return user;
+  };
   
 
 
 export default {   
     getAllTransactions, 
     createTransaction, 
+    getTransactionByUserId
 };

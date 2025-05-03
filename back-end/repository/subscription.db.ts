@@ -72,6 +72,13 @@ const getWalletSubscriptions = async (userId: number) => {
     });
   };
 
+  const getSubscriptionByUserId = async (userID: number) => {
+    return await database.subscription.findMany({
+        where: { userId: userID },
+        include: {
+        }
+    });
+};
 
 export default {
     getAllSubscriptions,
@@ -80,5 +87,6 @@ export default {
     getSubscriptionsForWallet,
     findUniqueSubscription,
     getWalletSubscriptions,
-    updateSubscription
+    updateSubscription,
+    getSubscriptionByUserId
 };

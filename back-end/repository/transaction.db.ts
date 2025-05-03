@@ -40,7 +40,16 @@ const createTransaction = async (transactionData: {
     });
 };
 
+const getTransactionByUserId = async (userID: number) => {
+    return await database.transaction.findMany({
+        where: { userId: userID },
+        include: {
+        }
+    });
+};
+
 export default {
     getAllTransactions, 
     createTransaction,
+    getTransactionByUserId
 };

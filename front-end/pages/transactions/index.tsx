@@ -1,29 +1,42 @@
 import Header from '@components/header';
 import TransactionOverviewTable from '@components/transactions/TransactionOverviewTable';
-import { Transaction } from '@types';
+import { Transaction, User } from '@types';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import styles from '@styles/home.module.css';
 import Link from 'next/link';
 import Footer from '@components/footer';
+import { useRouter } from 'next/router';
 
 const Transactions: React.FC = () => {
     const [transactions, setTransactions] = useState<Array<Transaction>>([]);
+    const [user, setUser] = useState<User | null>(null);
+    const router = useRouter();
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchTransactions = async () => {
+            const token = sessionStorage.getItem('authToken');
+            if (!token) return;
+
             try {
-                const response = await fetch('http://localhost:3000/transactions');
+                const response = await fetch('http://localhost:3000/transactions/me', {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                });
+
                 if (!response.ok) {
                     throw new Error(`Failed to fetch transactions: ${response.statusText}`);
                 }
-                const data: Transaction[] = await response.json();
+
+                const data = await response.json();
                 setTransactions(data);
             } catch (error) {
                 console.error('Error fetching transactions:', error);
             }
         };
-
         fetchTransactions();
     }, []);
 

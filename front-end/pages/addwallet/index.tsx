@@ -1,53 +1,66 @@
 import Footer from '@components/footer';
 import Header from '@components/header';
-import walletService from '@services/WalletService';
-import { TransformedWallet, WalletInput } from '@types';
+import { TransformedWallet, WalletInput, User } from '@types';
 import Head from 'next/head';
 import router from 'next/router';
 import { useEffect, useState } from 'react';
 import styles from '@styles/home.module.css';
 
-type Props = {
-    loggedInUserId?: number; // Make it optional to dynamically retrieve it
-};
+const validateNotEmpty = (strValue: string): boolean => strValue.trim().length > 0;
 
-const validateNotEmpty = (strValue: string): boolean => {
-    return strValue.trim().length > 0;
-};
-
-const AddWallet: React.FC<Props> = ({ loggedInUserId }) => {
-    const [userId, setUserId] = useState<number | null>(loggedInUserId || null);
+const AddWallet: React.FC = () => {
+    const [user, setUser] = useState<User | null>(null);
     const [walletInput, setWalletInput] = useState<WalletInput>({
         name: '',
         currency: '',
         amount: 0,
-        ownerId: userId ?? 0, // Initialize with 0; will be updated dynamically
+        ownerId: 0,
     });
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
 
-    const currencies = ['EUR', 'USD', 'GBP']; // Supported currencies
+    const currencies = ['EUR', 'USD', 'GBP'];
 
-    // Retrieve the logged-in user ID from sessionStorage if not passed as a prop
     useEffect(() => {
-        if (!userId) {
-            const storedUser = sessionStorage.getItem('loggedInUser');
-            if (storedUser) {
-                const parsedUser = JSON.parse(storedUser);
-                setUserId(parsedUser.id);
-                setWalletInput((prevInput) => ({
-                    ...prevInput,
-                    ownerId: parsedUser.id,
-                }));
-            } else {
-                router.push('/login'); // Redirect to login if user is not found
-            }
-        }
-    }, [userId]);
+        const fetchUserDetails = async () => {
+            const token = sessionStorage.getItem('authToken');
 
-    const handleBackClick = () => {
-        router.push('/wallets');
-    };
+            if (!token) {
+                router.push('/login');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/users/me', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch user. Status: ${response.status}`);
+                }
+
+                const userData: User = await response.json();
+                setUser(userData);
+                if (userData.id !== undefined) {
+                    setWalletInput((prev) => ({
+                        ...prev,
+                        ownerId: userData.id ?? 0, // fallback to 0 if undefined (or choose another safe default)
+                    }));
+                } else {
+                    console.error('User ID is undefined');
+                }
+            } catch (err) {
+                console.error('User fetch failed:', err);
+                router.push('/login');
+            }
+        };
+
+        fetchUserDetails();
+    }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -67,28 +80,19 @@ const AddWallet: React.FC<Props> = ({ loggedInUserId }) => {
         setLoading(true);
         setError('');
 
-        try {
-            const newWallet = await walletService.addWallet(walletInput);
-
-            alert(`Wallet '${newWallet.currency}' created successfully!`);
-            console.log('Transformed Wallet:', newWallet);
-
-            router.push('/wallets');
-        } catch (error) {
-            setError((error as Error).message || 'An error occurred while creating the wallet');
-        } finally {
+        const token = sessionStorage.getItem('authToken');
+        if (!token) {
+            setError('No auth token found. Please log in.');
             setLoading(false);
+            return;
         }
-    };
 
-    console.log('id:', userId);
-
-    const walletService = {
-        addWallet: async (walletInput: WalletInput): Promise<TransformedWallet> => {
+        try {
             const response = await fetch('http://localhost:3000/wallets', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(walletInput),
             });
@@ -97,9 +101,18 @@ const AddWallet: React.FC<Props> = ({ loggedInUserId }) => {
                 throw new Error('Failed to create wallet');
             }
 
-            const data: TransformedWallet = await response.json();
-            return data;
-        },
+            const newWallet: TransformedWallet = await response.json();
+            alert(`new wallet created successfully!`);
+            router.push('/wallets');
+        } catch (error) {
+            setError((error as Error).message || 'An error occurred while creating the wallet');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleBackClick = () => {
+        router.push('/wallets');
     };
 
     return (
@@ -113,15 +126,7 @@ const AddWallet: React.FC<Props> = ({ loggedInUserId }) => {
             <div className="flex flex-col min-h-screen">
                 <Header />
                 <main className={`${styles.main} p-6 flex-grow flex flex-col items-center`}>
-                    <div
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            textAlign: 'center',
-                            padding: '2rem',
-                            borderRadius: '1.5rem',
-                        }}
-                    >
+                    <div className="flex flex-col text-center p-8 rounded-xl">
                         <h3>Enter Wallet Name</h3>
                         <input
                             type="text"
@@ -154,24 +159,16 @@ const AddWallet: React.FC<Props> = ({ loggedInUserId }) => {
                             name="amount"
                             value={walletInput.amount || ''}
                             onChange={handleInputChange}
-                            className="border p-2 rounded"
-                            style={{ marginBottom: '3rem' }}
+                            className="border p-2 rounded mb-12"
                         />
 
-                        {error && <p style={{ color: 'red' }}>{error}</p>}
+                        {error && <p className="text-red-500">{error}</p>}
 
-                        <div
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'row',
-                                justifyContent: 'space-evenly',
-                                marginBottom: '5rem',
-                            }}
-                        >
+                        <div className="flex flex-row justify-evenly mb-20">
                             <button
                                 onClick={handleCreateWallet}
                                 disabled={loading}
-                                className="dp-flex text-white bg-[#F0F8FF] hover:bg-[#E0E8EF] font-medium rounded-lg text-sm px-5 py-2.5 text-center m-2"
+                                className="text-white bg-[#F0F8FF] hover:bg-[#E0E8EF] font-medium rounded-lg text-sm px-5 py-2.5 m-2"
                                 style={{ color: '#063f34' }}
                             >
                                 {loading ? 'Posting...' : 'Create Wallet'}
@@ -179,7 +176,7 @@ const AddWallet: React.FC<Props> = ({ loggedInUserId }) => {
 
                             <button
                                 onClick={handleBackClick}
-                                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600"
+                                className="px-4 py-2 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600"
                             >
                                 Back to Wallets
                             </button>

@@ -30,6 +30,11 @@ import express, { NextFunction, Request, Response } from 'express';
 import subscriptionService from '../service/subscription.service';
 import { SubscriptionInput } from '../types';
 
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+dotenv.config();
+
+
 const subscriptionRouter = express.Router();
 
   
@@ -57,6 +62,29 @@ const subscriptionRouter = express.Router();
     } catch (error) {
         res.status(400).json({ status: 'error' });    }
   });
+  
+  subscriptionRouter.get('/me', async (req: Request, res: Response) => {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number };
+
+        const subscriptions = await subscriptionService.getSubscriptionByUserId(decoded.id);
+
+        if (!subscriptions) {
+            return res.status(404).json({ message: 'subscriptions not found.' });
+        }
+
+        res.status(200).json(subscriptions);
+    } catch (error) {
+        console.error(error);
+        res.status(401).json({ message: 'Invalid or expired token.' });
+    }
+});
   
   /**
    * @swagger

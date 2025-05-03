@@ -193,6 +193,11 @@ import walletService from '../service/wallet.service';
 import { SubscriptionInput, TransactionInput, WalletInput } from '../types';
 import subscriptionService from '../service/subscription.service';
 
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+dotenv.config();
+
+
 const walletRouter = express.Router();
 /**
  * @swagger
@@ -219,6 +224,29 @@ walletRouter.get('/', async (req: Request, res: Response) => {
     } catch (error) {
         res.status(400).json({ status: 'error' });    }
   });
+  
+walletRouter.get('/me', async (req: Request, res: Response) => {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided.' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number };
+
+        const wallets = await walletService.getWalletByUserId(decoded.id);
+
+        if (!wallets) {
+            return res.status(404).json({ message: 'wallets not found.' });
+        }
+
+        res.status(200).json(wallets);
+    } catch (error) {
+        console.error(error);
+        res.status(401).json({ message: 'Invalid or expired token.' });
+    }
+});
   
   /**
    * @swagger

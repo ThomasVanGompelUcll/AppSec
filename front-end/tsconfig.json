@@ -47,5 +47,7 @@
 , "components/register"  ],
   "exclude": [
     "node_modules"
-  ]
+  ],
+  "esModuleInterop": true,
+  "allowSyntheticDefaultImports": true
 }

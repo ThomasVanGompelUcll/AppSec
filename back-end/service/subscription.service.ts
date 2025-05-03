@@ -168,10 +168,15 @@ const createSubscription = async (subscription: {
     }
   }
   
+  const getSubscriptionByUserId = async (userId: number) => {
+        const user = await subscriptionDb.getSubscriptionByUserId(userId);
+        return user;
+  }
 
 export default {   createSubscription,
     deleteSubscription,
     getSubscriptionsForWallet,
     getAllSubscriptions,
-    processAllSubscriptions
+    processAllSubscriptions,
+    getSubscriptionByUserId
  };

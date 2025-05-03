@@ -44,39 +44,34 @@ const LoginForm: React.FC = () => {
             return;
         }
 
-        console.log('Validation passed. Fetching users from the backend...');
+        console.log('Validation passed. Sending login request...');
         try {
-            const response = await fetch('http://localhost:3000/users');
+            const response = await fetch('http://localhost:3000/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password }), // Correct the request body
+            });
 
             console.log('Response status:', response.status);
             if (!response.ok) {
-                throw new Error(`Failed to fetch users. Status code: ${response.status}`);
+                throw new Error(`Failed to login. Status code: ${response.status}`);
             }
 
-            const users = await response.json();
-            console.log('Fetched users:', users);
+            const { token } = await response.json(); // Expect the token from the response
 
-            // Find user with matching email and password
-            const user = users.find(
-                (u: any) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-            );
-
-            if (!user) {
-                console.log(`No matching user found for email: ${email} with the given password.`);
+            if (!token) {
+                console.log('No token returned. Login failed.');
                 setStatusMessage('Email or password is incorrect.');
                 return;
             }
 
-            console.log('User found:', user);
+            console.log('Login successful. Token:', token);
 
-            // Store user in session storage
-            sessionStorage.setItem('loggedInUser', JSON.stringify(user));
+            // Store JWT token in sessionStorage (or localStorage)
+            sessionStorage.setItem('authToken', token); // You can use localStorage too if you prefer
 
-            // Format the welcome message
-            const welcomeMessage = `Welcome, ${user.firstName} ${user.lastName}!`;
-
-            // Display a welcome message and redirect
-            setStatusMessage(welcomeMessage);
+            // Redirect to a protected route, like '/wallets'
+            setStatusMessage('Login successful! Redirecting...');
             setTimeout(() => router.push('/wallets'), 2000); // Redirect after 2 seconds
         } catch (error) {
             console.error('Error during login process:', error);

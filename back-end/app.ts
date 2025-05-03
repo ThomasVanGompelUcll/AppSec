@@ -8,7 +8,7 @@ import { userRouter } from './controller/user.routes';
 import { walletRouter } from './controller/wallet.routes';
 import { subscriptionRouter } from './controller/subscription.routes';
 import { transactionRouter } from './controller/transaction.routes';
-
+import { authRouter } from './controller/auth.routes';
 
 const app = express();
 dotenv.config();
@@ -22,6 +22,7 @@ app.use("/users", userRouter);
 app.use("/wallets", walletRouter);
 app.use("/subscriptions", subscriptionRouter);
 app.use("/transactions", transactionRouter);
+app.use("/", authRouter);
 
 
 app.get('/status', (req, res) => {

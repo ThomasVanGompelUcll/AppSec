@@ -10,20 +10,28 @@ const UserProfile: FC = () => {
     const [user, setUser] = useState<any | null>(null);
     const [wallets, setWallets] = useState<any[] | null>(null);
     const router = useRouter();
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchUserDetails = async () => {
-            const loggedInUser = sessionStorage.getItem('loggedInUser');
+        const fetchUserDetailsAndWallets = async () => {
+            const token = sessionStorage.getItem('authToken');
 
-            if (!loggedInUser) {
-                // No logged-in user; render the page without user-specific details
+            if (!token) {
+                setErrorMessage(
+                    'You are not logged in. Please log in to view your profile. heehee'
+                );
                 return;
             }
 
-            const user = JSON.parse(loggedInUser);
-
             try {
-                const response = await fetch(`http://localhost:3000/users/${user.id}`);
+                const response = await fetch('http://localhost:3000/users/me', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
                 if (!response.ok) {
                     throw new Error(
                         `Failed to fetch user details. Status code: ${response.status}`
@@ -32,29 +40,25 @@ const UserProfile: FC = () => {
 
                 const userDetails = await response.json();
                 setUser(userDetails);
-                fetchWallets(userDetails.id);
-            } catch (error) {
-                console.error('Error fetching user details:', error);
-            }
-        };
 
-        const fetchWallets = async (userId: string) => {
-            try {
-                const response = await fetch(`http://localhost:3000/wallets/${userId}`);
-                if (!response.ok) {
+                const walletResponse = await fetch(
+                    `http://localhost:3000/wallets/${userDetails.id}`
+                );
+                if (!walletResponse.ok) {
                     throw new Error(
-                        `Failed to fetch wallets for user ID ${userId}. Status: ${response.status}`
+                        `Failed to fetch wallets for user ID ${userDetails.id}. Status: ${walletResponse.status}`
                     );
                 }
 
-                const walletList = await response.json();
+                const walletList = await walletResponse.json();
                 setWallets(walletList);
             } catch (error) {
-                console.error('Error fetching wallets:', error);
+                console.error('Error fetching user or wallet details:', error);
+                setErrorMessage('Failed to load user or wallet details. Please try again later.');
             }
         };
 
-        fetchUserDetails();
+        fetchUserDetailsAndWallets();
     }, []);
 
     return (

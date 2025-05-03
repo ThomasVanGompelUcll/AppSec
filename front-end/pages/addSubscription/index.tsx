@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import styles from '@styles/home.module.css';
 
 type Props = {
-    loggedInUserId?: number;
+    loggedInUserId: number;
 };
 
 const validateNotEmpty = (strValue: string): boolean => {
@@ -15,6 +15,7 @@ const validateNotEmpty = (strValue: string): boolean => {
 };
 
 const AddSubscription: React.FC<Props> = ({ loggedInUserId }) => {
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [userId, setUserId] = useState<number | null>(loggedInUserId || null);
     const [wallets, setWallets] = useState<{ id: number; name: string }[]>([]);
     const [subscriptionInput, setSubscriptionInput] = useState<SubscriptionInput>({
@@ -26,7 +27,7 @@ const AddSubscription: React.FC<Props> = ({ loggedInUserId }) => {
         frequency: '',
         currency: '',
         walletId: 0,
-        userId: loggedInUserId || 0,
+        userId: loggedInUserId,
     });
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
@@ -36,35 +37,80 @@ const AddSubscription: React.FC<Props> = ({ loggedInUserId }) => {
 
     // Retrieve the logged-in user ID and associated wallets
     useEffect(() => {
-        if (!userId) {
-            const storedUser = sessionStorage.getItem('loggedInUser');
-            if (storedUser) {
-                const parsedUser = JSON.parse(storedUser);
-                setUserId(parsedUser.id);
+        const fetchUserDetails = async () => {
+            const token = sessionStorage.getItem('authToken');
+
+            if (!token) {
+                router.push('/login');
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:3000/users/me', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch user. Status: ${response.status}`);
+                }
+
+                const userData = await response.json();
+                setUserId(userData.id); // Set userId here
                 setSubscriptionInput((prevInput) => ({
                     ...prevInput,
-                    userId: parsedUser.id,
+                    userId: userData.id,
                 }));
-
-                // Fetch user wallets
-                fetchWallets(parsedUser.id);
-            } else {
-                router.push('/login'); // Redirect to login if user is not found
+            } catch (err) {
+                console.error('Failed to fetch user details:', err);
+                router.push('/login');
             }
-        } else {
-            fetchWallets(userId);
-        }
-    }, [userId]);
+        };
 
-    const fetchWallets = async (userId: number) => {
-        try {
-            const response = await fetch(`http://localhost:3000/wallets?userId=${userId}`);
-            if (!response.ok) throw new Error('Failed to fetch wallets');
-            const data = await response.json();
-            setWallets(data);
-        } catch (error) {
-            setError('Error fetching wallets: ' + (error as Error).message);
+        if (!loggedInUserId) {
+            fetchUserDetails();
+            fetchWallets();
         }
+    }, [loggedInUserId]);
+
+    const fetchWallets = async () => {
+        const token = sessionStorage.getItem('authToken');
+
+        if (!token) {
+            setErrorMessage('You are not logged in. Please log in to view your wallets.');
+            return;
+        }
+
+        try {
+            const walletsResponse = await fetch('http://localhost:3000/wallets/me', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!walletsResponse.ok) {
+                throw new Error(`Failed to fetch subscriptions. Status: ${walletsResponse.status}`);
+            }
+
+            const walletsList = await walletsResponse.json();
+            console.log('heeeeeeee:', walletsList);
+            setWallets(walletsList);
+        } catch (error) {
+            console.error('Error fetching user or subscriptions:', error);
+            setErrorMessage('Failed to load user or subscription data. Please try again later.');
+        }
+        const userResponse = await fetch('http://localhost:3000/users/me', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+        });
     };
 
     const handleBackClick = () => {
@@ -148,6 +194,15 @@ const AddSubscription: React.FC<Props> = ({ loggedInUserId }) => {
                             type="text"
                             name="description"
                             value={subscriptionInput.description}
+                            onChange={handleInputChange}
+                            className="border p-2 rounded"
+                        />
+
+                        <h3>Enter Amount</h3>
+                        <input
+                            type="number"
+                            name="amount"
+                            value={subscriptionInput.amount}
                             onChange={handleInputChange}
                             className="border p-2 rounded"
                         />

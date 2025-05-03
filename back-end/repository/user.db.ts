@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { User } from '../model/user';
 import { UserInput, Role } from '../types';
 import database from './database'
+import { useReducer } from 'react';
 
 // const prisma = new PrismaClient();
 
@@ -26,16 +27,15 @@ const getUserById = async (userId: number) => {
     });
 };
 
-const getUserByEmail = async (email: string): Promise<boolean> => {
-    const user = await database.user.findUnique({
-        where: { email },
+const getUserByEmail = async (userEmail: string) => {
+    return await database.user.findUnique({
+        where: { email: userEmail },
         include: {
             ownedWallets: true,
             sharedWallets: true,
             transactions: true
         }
     });
-    return !!user;
 };
 
 const createUser = async(user: UserInput) => {
@@ -67,11 +67,22 @@ const createUser = async(user: UserInput) => {
     });
 };
 
-
+const userExists = async (email: string): Promise<Boolean> => {
+    const user = await database.user.findUnique({
+        where: { email },
+        include: {
+            ownedWallets: true,
+            sharedWallets: true,
+            transactions: true
+        }
+    });
+    return !!user;
+};
 
 export default {
     getAllUsers,
     getUserById,
     getUserByEmail,
     createUser,
+    userExists
 };

@@ -1,32 +1,56 @@
 import Header from '@components/header';
 import SubscriptionOverviewTable from '@components/subscriptions/SubscriptionOverviewTable';
-import { SubscriptionInput } from '@types';
+import { SubscriptionInput, User } from '@types';
 import Head from 'next/head';
 import { useEffect, useState } from 'react';
 import styles from '@styles/home.module.css';
 import Link from 'next/link';
 import Footer from '@components/footer';
+import { useRouter } from 'next/router';
 
 const Subscriptions: React.FC = () => {
     const [subscriptions, setSubscriptions] = useState<Array<SubscriptionInput>>([]);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        const fetchSubscriptions = async () => {
+        const fetchUserAndSubscriptions = async () => {
+            const token = sessionStorage.getItem('authToken');
+
+            if (!token) {
+                setErrorMessage('You are not logged in. Please log in to view your subscriptions.');
+                return;
+            }
+
             try {
-                const response = await fetch('http://localhost:3000/subscriptions');
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch subscriptions: ${response.statusText}`);
+                const subscriptionsResponse = await fetch(
+                    'http://localhost:3000/subscriptions/me',
+                    {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+
+                if (!subscriptionsResponse.ok) {
+                    throw new Error(
+                        `Failed to fetch subscriptions. Status: ${subscriptionsResponse.status}`
+                    );
                 }
-                const data: SubscriptionInput[] = await response.json();
-                setSubscriptions(data);
+
+                const subscriptionList = await subscriptionsResponse.json();
+                console.log('heeeeeeee:', subscriptionList);
+                setSubscriptions(subscriptionList);
             } catch (error) {
-                console.error('Error fetching subscriptions:', error);
+                console.error('Error fetching user or subscriptions:', error);
+                setErrorMessage(
+                    'Failed to load user or subscription data. Please try again later.'
+                );
             }
         };
-
-        fetchSubscriptions();
+        fetchUserAndSubscriptions();
     }, []);
-
     return (
         <>
             <Head>
