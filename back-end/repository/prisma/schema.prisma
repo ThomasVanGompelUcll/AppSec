@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int          @id @default(autoincrement())
+  firstName      String
+  lastName       String
+  age            Int
+  email          String       @unique
+  password       String
+  phoneNumber    String
+  personalNumber Int
+  role           String
+  ownedWallets   Wallet[]     @relation("WalletOwner")
+  sharedWallets  Wallet[]     @relation("SharedWallets")
+  transactions   Transaction[]
+}
+
+model Wallet {
+  id              Int          @id @default(autoincrement())
+  name            String
+  currency        String
+  creationDate    DateTime
+  amount          Float
+  ownerId         Int          
+  owner           User         @relation("WalletOwner", fields: [ownerId], references: [id])
+  sharedUsers     User[]       @relation("SharedWallets")
+  transactions    Transaction[]
+  subscriptions   Subscription[]
+}
+
+model Transaction {
+  id              Int          @id @default(autoincrement())
+  category        String
+  expense         Boolean
+  currency        String
+  amount          Float
+  dateTime        DateTime
+  walletId        Int
+  userId          Int
+  wallet          Wallet       @relation(fields: [walletId], references: [id])
+  user            User         @relation(fields: [userId], references: [id])
+}
+
+model Subscription {
+  id              Int          @id @default(autoincrement())
+  description     String
+  amount          Float
+  startDate       DateTime
+  endDate         DateTime
+  expense         Boolean
+  frequency       String
+  currency        String
+  walletId        Int
+  wallet          Wallet       @relation(fields: [walletId], references: [id])
+  userId          Int
+}

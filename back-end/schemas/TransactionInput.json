@@ -1,0 +1,30 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "TransactionInput",
+    "type": "object",
+    "properties": {
+      "category": {
+        "type": "string"
+      },
+      "expense": {
+        "type": "boolean"
+      },
+      "currency": {
+        "type": "string"
+      },
+      "amount": {
+        "type": "number"
+      },
+      "dateTime": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "walletId": {
+        "type": "number"
+      },
+      "userId": {
+        "type": "number"
+      }
+    },
+    "required": ["category", "expense", "currency", "amount", "dateTime", "walletId", "userId"]
+}

@@ -1,0 +1,376 @@
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     User:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         firstName:
+ *           type: string
+ *         lastName:
+ *           type: string
+ *         age:
+ *           type: integer
+ *         email:
+ *           type: string
+ *         password:
+ *           type: string
+ *           format: password
+ *         phoneNumber:
+ *           type: string
+ *         personalNumber:
+ *           type: integer
+ *         role:
+ *           type: string
+ *           enum: [admin, owner, user]
+ *         ownedWallets:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Wallet'
+ *         sharedWallets:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Wallet'
+ *         transactions:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Transaction'
+ *     UserInput:
+ *       type: object
+ *       properties:
+ *         firstName:
+ *           type: string
+ *         lastName:
+ *           type: string
+ *         age:
+ *           type: integer
+ *         email:
+ *           type: string
+ *         password:
+ *           type: string
+ *           format: password
+ *         phoneNumber:
+ *           type: string
+ *         personalNumber:
+ *           type: integer
+ *         role:
+ *           type: string
+ *           enum: [admin, owner, user]
+ *     Wallet:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         currency:
+ *           type: string
+ *           enum: [EUR, USD, GBP]
+ *         creationDate:
+ *           type: string
+ *           format: date-time
+ *         amount:
+ *           type: number
+ *         owner:
+ *           $ref: '#/components/schemas/User'
+ *         sharedUsers:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/User'
+ *         transactions:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Transaction'
+ *         subscriptions:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Subscription'
+ *     WalletInput:
+ *       type: object
+ *       properties:
+ *         currency:
+ *           type: string
+ *           enum: [EUR, USD, GBP]
+ *         amount:
+ *           type: number
+ *         ownerId:
+ *           type: integer
+ *     Transaction:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         category:
+ *           type: string
+ *         expense:
+ *           type: boolean
+ *         currency:
+ *           type: string
+ *           enum: [EUR, USD, GBP]
+ *         amount:
+ *           type: number
+ *         dateTime:
+ *           type: string
+ *           format: date-time
+ *         walletId:
+ *           type: integer
+ *         userId:
+ *           type: integer
+ *     TransactionInput:
+ *       type: object
+ *       properties:
+ *         category:
+ *           type: string
+ *         expense:
+ *           type: boolean
+ *         currency:
+ *           type: string
+ *           enum: [EUR, USD, GBP]
+ *         amount:
+ *           type: number
+ *         dateTime:
+ *           type: string
+ *           format: date-time
+ *         walletId:
+ *           type: integer
+ *         userId:
+ *           type: integer
+ *     Subscription:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         description:
+ *           type: string
+ *         amount:
+ *           type: number
+ *         startDate:
+ *           type: string
+ *           format: date-time
+ *         endDate:
+ *           type: string
+ *           format: date-time
+ *         expense:
+ *           type: boolean
+ *         frequency:
+ *           type: string
+ *           enum: [daily, weekly, monthly, yearly]
+ *         currency:
+ *           type: string
+ *           enum: [EUR, USD, GBP]
+ *         walletId:
+ *           type: integer
+ *         lastTransactionDate:
+ *           type: string
+ *           format: date-time
+ *     SubscriptionInput:
+ *       type: object
+ *       properties:
+ *         description:
+ *           type: string
+ *         amount:
+ *           type: number
+ *         startDate:
+ *           type: string
+ *           format: date-time
+ *         endDate:
+ *           type: string
+ *           format: date-time
+ *         expense:
+ *           type: boolean
+ *         frequency:
+ *           type: string
+ *           enum: [daily, weekly, monthly, yearly]
+ *         currency:
+ *           type: string
+ *           enum: [EUR, USD, GBP]
+ *         walletId:
+ *           type: integer
+ */
+
+import express, { NextFunction, Request, Response } from 'express';
+import walletService from '../service/wallet.service';
+import { SubscriptionInput, TransactionInput, WalletInput } from '../types';
+import subscriptionService from '../service/subscription.service';
+
+const walletRouter = express.Router();
+/**
+ * @swagger
+ * /wallets:
+ *   get:
+ *     summary: Get a list of all wallets.
+ *     tags:
+ *       - Wallets
+ *     responses:
+ *       200:
+ *         description: A list of wallet objects.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Wallet'
+ */
+walletRouter.get('/', async (req: Request, res: Response) => {
+    try {
+      const wallets = await walletService.getAllWallets();
+      subscriptionService.processAllSubscriptions();
+      res.status(200).json(wallets);
+    } catch (error) {
+        res.status(400).json({ status: 'error' });    }
+  });
+  
+  /**
+   * @swagger
+   * /wallets/{walletId}/share/{userId}:
+   *   post:
+   *     summary: Add a user to a shared wallet.
+   *     tags:
+   *       - Wallets
+   *     parameters:
+   *       - in: path
+   *         name: walletId
+   *         schema:
+   *           type: integer
+   *         required: true
+   *         description: The wallet ID
+   *       - in: path
+   *         name: userId
+   *         schema:
+   *           type: integer
+   *         required: true
+   *         description: The user ID to add to the wallet
+   *     responses:
+   *       200:
+   *         description: User added to the shared wallet successfully.
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/User'
+   */
+  walletRouter.post('/:walletId/share/:userId', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const walletId = Number(req.params.walletId);
+      const userId = Number(req.params.userId);
+      const result = await walletService.addUserToSharedWallet(walletId, userId);
+      res.status(200).json(result);
+    } catch (error) {
+        res.status(400).json({ status: 'error' });    }
+  });
+  
+  /**
+   * @swagger
+   * /wallets:
+   *   post:
+   *     summary: Create a new wallet.
+   *     tags:
+   *       - Wallets
+   *     parameters:
+   *       - in: path
+   *         name: walletId
+   *         schema:
+   *           type: integer
+   *         required: true
+   *         description: The wallet ID
+   *       - in: path
+   *         name: userId
+   *         schema:
+   *           type: integer
+   *         required: true
+   *         description: The user ID to add to the wallet
+   *     responses:
+   *       201:
+   *         description: The created wallet object.
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/Wallet'
+   */
+walletRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const wallet = <WalletInput>req.body;
+      const result = await walletService.createWallet(wallet);
+      res.status(201).json(result);
+    } catch (error) {
+        res.status(400).json({ status: 'error' });    }
+});
+
+  /**
+   * @swagger
+   * /wallets/{walletId}/remove/{userId}:
+   *   delete:
+   *     summary: Remove a user from a wallet.
+   *     tags:
+   *       - Wallets
+   *     parameters:
+   *       - in: path
+   *         name: walletId
+   *         schema:
+   *           type: integer
+   *         required: true
+   *         description: The wallet ID
+   *       - in: path
+   *         name: userId
+   *         schema:
+   *           type: integer
+   *         required: true
+   *         description: The user ID to remove from the wallet
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               userId:
+   *                 type: integer
+   *                 description: The user ID who must be removed
+   *             required:
+   *               - userId
+   *     responses:
+   *       204:
+   *         description: Subscription deleted successfully.
+   */
+walletRouter.delete('/:walletId/remove/:userId', async (req: Request, res: Response) => {
+    try {
+      const walletId = Number(req.params.walletId);
+      const userId = Number(req.params.userId);
+      await walletService.addUserToSharedWallet(walletId, userId);
+  
+      res.status(204).send();
+    } catch (error) {
+        res.status(400).json({ status: 'error' });    }
+});
+
+/**
+ * @swagger
+ * /wallet/{id}:
+ *  get:
+ *      summary: Get a wallet by userId.
+ *      parameters: 
+ *        - in: path
+ *          name: id
+ *          schema:
+ *              type: integer
+ *          required: true
+ *          description: The user id
+ *      responses:
+ *          200:
+ *              description: A wallet list
+ *              content: 
+ *                  application/json:
+ *                      schema:
+ *                          $ref: '#/components/schemas/Wallet'
+ */
+walletRouter.get('/:id', async (req: Request, res: Response) => {
+  try {
+      const userId = parseInt(req.params.id);
+      const user = await walletService.getWalletByUserId(userId);
+      res.status(200).json(user);
+  } catch (error) {
+      res.status(404).json({ status: 'error' });
+  }
+});
+
+export { walletRouter };
+  

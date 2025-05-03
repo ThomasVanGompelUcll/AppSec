@@ -1,0 +1,35 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Transaction",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "number"
+      },
+      "category": {
+        "type": "string"
+      },
+      "expense": {
+        "type": "string"
+      },
+      "currency": {
+        "type": "string"
+      },
+      "amount": {
+        "type": "number"
+      },
+      "dateTime": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "wallet": {
+        "type": "object",
+        "$ref": "Wallet.json"
+      },
+      "user": {
+        "type": "object",
+        "$ref": "User.json"
+      }
+    },
+    "required": ["id","category", "expense", "currency", "amount", "dateTime", "wallet", "user"]
+  }

@@ -1,0 +1,38 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Subscription",
+    "type": "object",
+    "properties": {
+      "subscriptionId": {
+        "type": "number"
+      },
+      "category": {
+        "type": "string"
+      },
+      "amount": {
+        "type": "number"
+      },
+      "startDate": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "endDate": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "expense": {
+        "type": "boolean"
+      },
+      "frequency": {
+        "type": "string"
+      },
+      "currency": {
+        "type": "string"
+      },
+      "wallet": {
+        "type": "object",
+        "$ref": "Wallet.json"
+      }
+    },
+    "required": ["subscriptionId", "category", "amount", "startDate", "endDate", "expense", "frequency", "currency", "wallet"]
+}

@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "WalletInput",
+    "type": "object",
+    "properties": {
+      "currency": {
+        "type": "string"
+      },
+      "creationDate": {
+        "type": "string",
+        "format": "date-time"
+      },
+      "amount": {
+        "type": "number"
+      },
+      "ownerId": {
+        "type": "number"
+      }
+    },
+    "required": ["currency", "creationDate", "amount", "ownerId"]
+}
