@@ -193,7 +193,7 @@ import walletService from '../service/wallet.service';
 import { SubscriptionInput, TransactionInput, WalletInput } from '../types';
 import subscriptionService from '../service/subscription.service';
 
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '../util/jwt';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -233,7 +233,7 @@ walletRouter.get('/me', async (req: Request, res: Response) => {
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number };
+        const decoded = verifyToken(token) as { id: number, role: string };
 
         const wallets = await walletService.getWalletByUserId(decoded.id);
 
@@ -401,4 +401,3 @@ walletRouter.get('/:id', async (req: Request, res: Response) => {
 });
 
 export { walletRouter };
-  

@@ -21,10 +21,26 @@ import express, { NextFunction, Request, Response } from 'express';
 import transactionService from '../service/transaction.service';
 import { TransactionInput } from '../types';
 
-import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { verifyToken } from '../util/jwt';
 dotenv.config();
 
+export const authenticate = (req: Request, res: Response, next: NextFunction) => {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided.' });
+    }
+
+    try {
+        const decoded = verifyToken(token) as { id: number; role: string };
+        (req as any).user = decoded;
+        next();
+    } catch (error) {
+        console.error('Token validation error:', error);
+        return res.status(401).json({ message: 'Invalid or expired token.' });
+    }
+};
 
 const transactionRouter = express.Router();
 
@@ -45,13 +61,15 @@ const transactionRouter = express.Router();
    *               items:
    *                 $ref: '#/components/schemas/Transaction'
    */
-  transactionRouter.get('/', async (req: Request, res: Response) => {
+transactionRouter.get('/', authenticate, async (req: Request, res: Response) => {
     try {
-      const transactions = await transactionService.getAllTransactions();
-      res.status(200).json(transactions);
+        const transactions = await transactionService.getAllTransactions();
+        res.status(200).json(transactions);
     } catch (error) {
-        res.status(400).json({ status: 'error' });    }
-  });
+        console.error('Error fetching transactions:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
 
 
   
@@ -76,14 +94,21 @@ const transactionRouter = express.Router();
    *             schema:
    *               $ref: '#/components/schemas/Transaction'
    */
-transactionRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
+transactionRouter.post('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const transaction = <TransactionInput>req.body;
-      const result = await transactionService.createTransaction(transaction);
-      res.status(201).json(result);
+        const transaction = <TransactionInput>req.body
+
+        if (!transaction.category || !transaction.currency || isNaN(transaction.amount) || !transaction.dateTime) {
+            return res.status(400).json({ message: 'Invalid input data.' });
+        }
+
+        const result = await transactionService.createTransaction(transaction);
+        res.status(201).json(result);
     } catch (error) {
-        res.status(400).json({ status: 'error' });    }
-  });
+        console.error('Error creating transaction:', error);
+        res.status(500).json({ message: 'Internal server error.' });
+    }
+});
 
 
   /**
@@ -107,17 +132,10 @@ transactionRouter.post('/', async (req: Request, res: Response, next: NextFuncti
  *       401:
  *         description: Unauthorized, token missing or invalid.
  */
-transactionRouter.get('/me', async (req: Request, res: Response) => {
-    const token = req.headers.authorization?.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ message: 'No token provided.' });
-    }
-
+transactionRouter.get('/me', authenticate, async (req: Request, res: Response) => {
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: number };
-
-        const transactions = await transactionService.getTransactionByUserId(decoded.id);
+        const userId = (req as any).user.id;
+        const transactions = await transactionService.getTransactionByUserId(userId);
 
         if (!transactions) {
             return res.status(404).json({ message: 'Transactions not found.' });
@@ -125,8 +143,8 @@ transactionRouter.get('/me', async (req: Request, res: Response) => {
 
         res.status(200).json(transactions);
     } catch (error) {
-        console.error(error);
-        res.status(401).json({ message: 'Invalid or expired token.' });
+        console.error('Error fetching user transactions:', error);
+        res.status(500).json({ message: 'Internal server error.' });
     }
 });
 

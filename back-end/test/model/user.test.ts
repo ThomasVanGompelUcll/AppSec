@@ -228,3 +228,11 @@ test('given: invalid role; when: user is validated; then: validation should fail
 
     expect(createNewUser).toThrow('Invalid or missing role');
 });
+
+test('given: valid token; when: token is verified; then: payload should not contain sensitive data', () => {
+  const token = generateToken({ id: 1, role: 'user' });
+  const decoded = verifyToken(token);
+  expect(decoded).toHaveProperty('id', 1);
+  expect(decoded).toHaveProperty('role', 'user');
+  expect(decoded).not.toHaveProperty('email'); // Ensure sensitive data is not included
+});
