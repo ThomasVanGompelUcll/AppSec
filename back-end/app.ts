@@ -4,6 +4,7 @@ import cors from 'cors';
 import * as bodyParser from 'body-parser';
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import helmet from 'helmet'; // Import Helmet
 import { userRouter } from './controller/user.routes';
 import { walletRouter } from './controller/wallet.routes';
 import { subscriptionRouter } from './controller/subscription.routes';
@@ -15,15 +16,26 @@ dotenv.config();
 const port = process.env.APP_PORT || 3000;
 
 app.use(cors({ origin: 'http://localhost:8080' }));
-app.use(cors({ origin: 'http://localhost:8080' }));
 app.use(bodyParser.json());
+
+app.use(
+    helmet.contentSecurityPolicy({
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
+          styleSrc: ["'self'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com"],
+          objectSrc: ["'none'"],
+          upgradeInsecureRequests: [],
+        },
+      })
+);
 
 app.use("/users", userRouter);
 app.use("/wallets", walletRouter);
 app.use("/subscriptions", subscriptionRouter);
 app.use("/transactions", transactionRouter);
 app.use("/", authRouter);
-
 
 app.get('/status', (req, res) => {
     res.json({ message: 'Courses API is running...' });
