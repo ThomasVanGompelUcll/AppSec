@@ -3,8 +3,24 @@ import express, { Request, Response } from 'express';
 import bcrypt from 'bcrypt';
 import { generateToken, generateRefreshToken, verifyRefreshToken, revokeToken } from '../util/jwt';
 import userService from '../service/user.service';
+import { z } from 'zod';
 
 const authRouter = express.Router();
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+const registerSchema = z.object({
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(8),
+  phoneNumber: z.string().min(10),
+  personalNumber: z.number(),
+  role: z.enum(['admin', 'owner', 'user']),
+});
 
 /**
  * @swagger
@@ -36,18 +52,27 @@ const authRouter = express.Router();
  *                   type: string
  */
 authRouter.post('/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-
-  const user = await userService.findByEmail(email);
-
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ message: 'Invalid credentials' });
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Invalid input', errors: parsed.error.errors });
   }
 
-  const token = generateToken({ id: user.id, role: user.role }); // Avoid including sensitive data like email
-  const refreshToken = generateRefreshToken({ id: user.id });
+  const { email, password } = parsed.data;
 
-  return res.json({ token, refreshToken });
+  try {
+    const user = await userService.findByEmail(email); // Safe query with validated input
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const token = generateToken({ id: user.id, role: user.role });
+    const refreshToken = generateRefreshToken({ id: user.id });
+
+    return res.json({ token, refreshToken });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 /**
@@ -70,9 +95,18 @@ authRouter.post('/login', async (req: Request, res: Response) => {
  *               $ref: '#/components/schemas/User'
  */
 authRouter.post('/register', async (req: Request, res: Response) => {
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Invalid input', errors: parsed.error.errors });
+  }
+
   try {
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-    const user = await userService.createUser({ ...req.body, password: hashedPassword });
+    const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
+    const user = await userService.createUser({
+      ...parsed.data,
+      password: hashedPassword,
+      age: 0, // Ensure all required fields are provided
+    });
     res.status(201).json(user);
   } catch (error) {
     res.status(400).json({ message: 'Registration failed' });
@@ -109,6 +143,10 @@ authRouter.post('/register', async (req: Request, res: Response) => {
 authRouter.post('/refresh', async (req: Request, res: Response) => {
   const { refreshToken } = req.body;
 
+  if (!refreshToken || typeof refreshToken !== 'string') {
+    return res.status(400).json({ message: 'Invalid input' });
+  }
+
   try {
     const decoded = verifyRefreshToken(refreshToken);
     revokeToken(refreshToken);
@@ -116,12 +154,37 @@ authRouter.post('/refresh', async (req: Request, res: Response) => {
     if (typeof decoded !== 'object' || !('id' in decoded) || !('role' in decoded)) {
       return res.status(400).json({ message: 'Invalid token payload' });
     }
+
     const newToken = generateToken({ id: decoded.id, role: decoded.role });
     const newRefreshToken = generateRefreshToken({ id: decoded.id });
 
     return res.json({ token: newToken, refreshToken: newRefreshToken });
   } catch (error) {
     return res.status(401).json({ message: 'Invalid or expired refresh token' });
+  }
+});
+
+authRouter.post('/safe-login', async (req: Request, res: Response) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Invalid input', errors: parsed.error.errors });
+  }
+
+  const { email, password } = parsed.data;
+
+  try {
+    const user = await userService.findByEmail(email);
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const token = generateToken({ id: user.id, role: user.role });
+    const refreshToken = generateRefreshToken({ id: user.id });
+
+    return res.json({ token, refreshToken });
+  } catch (error) {
+    return res.status(500).json({ message: 'Internal server error' });
   }
 });
 

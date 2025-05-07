@@ -192,11 +192,18 @@ import express, { NextFunction, Request, Response } from 'express';
 import walletService from '../service/wallet.service';
 import { SubscriptionInput, TransactionInput, WalletInput } from '../types';
 import subscriptionService from '../service/subscription.service';
+import { z } from 'zod';
 
 import { verifyToken } from '../util/jwt';
 import dotenv from 'dotenv';
 dotenv.config();
 
+const walletSchema = z.object({
+  name: z.string().min(1),
+  currency: z.enum(['EUR', 'USD', 'GBP']),
+  amount: z.number().positive(),
+  ownerId: z.number().positive(),
+});
 
 const walletRouter = express.Router();
 /**
@@ -314,13 +321,18 @@ walletRouter.get('/me', async (req: Request, res: Response) => {
    *             schema:
    *               $ref: '#/components/schemas/Wallet'
    */
-walletRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
+walletRouter.post('/', async (req: Request, res: Response) => {
+    const parsed = walletSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ message: 'Invalid input', errors: parsed.error.errors });
+    }
+
     try {
-      const wallet = <WalletInput>req.body;
-      const result = await walletService.createWallet(wallet);
-      res.status(201).json(result);
+        const wallet = await walletService.createWallet(parsed.data);
+        res.status(201).json(wallet);
     } catch (error) {
-        res.status(400).json({ status: 'error' });    }
+        res.status(500).json({ message: 'Internal server error' });
+    }
 });
 
   /**

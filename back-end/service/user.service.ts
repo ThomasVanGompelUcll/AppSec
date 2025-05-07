@@ -5,7 +5,6 @@ import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS =10;
 
-
 const getAllUsers = async() => {
     const users = await userDb.getAllUsers();
     return users.map(user => ({
@@ -29,16 +28,22 @@ const getUserById = async(userId: number) => {
     return user;
 }
 
-const findByEmail = async(userEmail: string) => {
-    if (await userDb.userExists(userEmail)){
+const findByEmail = async (userEmail: string) => {
+    if (!userEmail || typeof userEmail !== 'string') {
+        throw new Error('Invalid email input');
+    }
+
+    if (await userDb.userExists(userEmail)) {
         const user = await userDb.getUserByEmail(userEmail);
         return user;
     }
     return null;
-}
+};
 
 const createUser = async (userInput: UserInput): Promise<User> => {
-    if (!userInput.email) throw new Error('Email is required');
+    if (!userInput.email || typeof userInput.email !== 'string') {
+        throw new Error('Email is required and must be a string');
+    }
 
     // Check if the user already exists
     const existingUser = await userDb.userExists(userInput.email);
@@ -76,4 +81,5 @@ const createUser = async (userInput: UserInput): Promise<User> => {
 
     return result as any;
 };
+
 export default { getAllUsers, createUser, getUserById, findByEmail };

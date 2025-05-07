@@ -78,24 +78,29 @@ I didn't really have any security measures so this is what i added:
 
 # Injections
 
-(maximum a half A4-page of text, code snippets and screenshots not included)
-
 ## Before
 
-Describe in a few sentences what the actual status is (before changing).
+We used prisma, and this uses parameterized queries. This means sql injection attacks are already mitigated.
 
 ## After
 
 Describe in a few sentences what you
 
 - kept in your project
+  - parameterized queries
 - changed in your project
-  (explain how you found it, and why you kept/changed it)
-  (if frameworks, libraries already provide defense mechanisms, please explain how and what they actually do)
+  - using zod to validate input in my api routes.
+  - Don't give privilages to users in the database.
+    (explain how you found it, and why you kept/changed it)
+    (if frameworks, libraries already provide defense mechanisms, please explain how and what they actually do)
 
 ## Code Examples
 
-Mention here wat parts of the code you changed (referencing exact class/file-name and code lines)
+- zod validation
+  - Done in all routes.ts
+  - example: auth.routes.ts -> 10 & 15
+- least privilages
+  - Queries are in .env (commented) -> 7-18
 
 # Class 04 Vulnerable & Outdated components
 

@@ -20,6 +20,7 @@
 import express, { NextFunction, Request, Response } from 'express';
 import transactionService from '../service/transaction.service';
 import { TransactionInput } from '../types';
+import { z } from 'zod';
 
 import dotenv from 'dotenv';
 import { verifyToken } from '../util/jwt';
@@ -44,23 +45,33 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
 
 const transactionRouter = express.Router();
 
-  /**
-   * @swagger
-   * /transactions:
-   *   get:
-   *     summary: Get a list of all transactions.
-   *     tags:
-   *       - Transactions
-   *     responses:
-   *       200:
-   *         description: A list of transaction objects.
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: array
-   *               items:
-   *                 $ref: '#/components/schemas/Transaction'
-   */
+const transactionSchema = z.object({
+  category: z.string().min(1),
+  expense: z.boolean(),
+  currency: z.enum(['EUR', 'USD', 'GBP']),
+  amount: z.number().positive(),
+  dateTime: z.string().refine((date) => !isNaN(Date.parse(date)), { message: 'Invalid date' }),
+  walletId: z.number().positive(),
+  userId: z.number().positive(),
+});
+
+/**
+ * @swagger
+ * /transactions:
+ *   get:
+ *     summary: Get a list of all transactions.
+ *     tags:
+ *       - Transactions
+ *     responses:
+ *       200:
+ *         description: A list of transaction objects.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Transaction'
+ */
 transactionRouter.get('/', authenticate, async (req: Request, res: Response) => {
     try {
         const transactions = await transactionService.getAllTransactions();
@@ -71,47 +82,44 @@ transactionRouter.get('/', authenticate, async (req: Request, res: Response) => 
     }
 });
 
+/**
+ * @swagger
+ * /transactions:
+ *   post:
+ *     summary: Create a new transaction.
+ *     tags:
+ *       - Transactions
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/TransactionInput'
+ *     responses:
+ *       201:
+ *         description: The created transaction object.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Transaction'
+ */
+transactionRouter.post('/', async (req: Request, res: Response) => {
+    const parsed = transactionSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ message: 'Invalid input', errors: parsed.error.errors });
+    }
 
-  
-  /**
-   * @swagger
-   * /transactions:
-   *   post:
-   *     summary: Create a new transaction.
-   *     tags:
-   *       - Transactions
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             $ref: '#/components/schemas/TransactionInput'
-   *     responses:
-   *       201:
-   *         description: The created transaction object.
-   *         content:
-   *           application/json:
-   *             schema:
-   *               $ref: '#/components/schemas/Transaction'
-   */
-transactionRouter.post('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const transaction = <TransactionInput>req.body
-
-        if (!transaction.category || !transaction.currency || isNaN(transaction.amount) || !transaction.dateTime) {
-            return res.status(400).json({ message: 'Invalid input data.' });
-        }
-
-        const result = await transactionService.createTransaction(transaction);
-        res.status(201).json(result);
+        const transaction = await transactionService.createTransaction({
+            ...parsed.data,
+        });
+        res.status(201).json(transaction);
     } catch (error) {
-        console.error('Error creating transaction:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        res.status(500).json({ message: 'Internal server error' });
     }
 });
 
-
-  /**
+/**
  * @swagger
  * /transactions/me:
  *   get:

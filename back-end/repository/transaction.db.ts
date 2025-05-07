@@ -24,19 +24,14 @@ const createTransaction = async (transactionData: {
 }) => {
     return await database.transaction.create({
         data: {
+            category: transactionData.category,
             expense: transactionData.expense,
             currency: transactionData.currency,
             amount: transactionData.amount,
-            dateTime: new Date(),
-            wallet: {
-                connect: { id: transactionData.walletId }
-            },
-            user: {
-                connect: { id: transactionData.userId }
-            },
-            category: transactionData.category,
+            dateTime: transactionData.dateTime,
+            wallet: { connect: { id: transactionData.walletId } }, // Parameterized
+            user: { connect: { id: transactionData.userId } }, // Parameterized
         },
-
     });
 };
 

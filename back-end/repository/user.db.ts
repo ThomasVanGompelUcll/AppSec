@@ -28,13 +28,17 @@ const getUserById = async (userId: number) => {
 };
 
 const getUserByEmail = async (userEmail: string) => {
+    if (!userEmail || typeof userEmail !== 'string') {
+        throw new Error('Invalid email input');
+    }
+
     return await database.user.findUnique({
-        where: { email: userEmail },
+        where: { email: userEmail }, // Parameterized query handled by Prisma
         include: {
             ownedWallets: true,
             sharedWallets: true,
-            transactions: true
-        }
+            transactions: true,
+        },
     });
 };
 

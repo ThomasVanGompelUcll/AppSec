@@ -46,6 +46,10 @@ const getAllWallets = async () => {
   }));
 };
 const createWallet = async (walletInput: WalletInput): Promise<TransformedWallet> => {
+    if (!walletInput.name || typeof walletInput.name !== 'string') {
+        throw new Error('Invalid wallet name');
+    }
+
     const newWallet = await walletDb.createWalletWithUserId(walletInput);
     return {
         id: newWallet.id,

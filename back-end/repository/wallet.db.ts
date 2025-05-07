@@ -81,7 +81,7 @@ const addUserToSharedWallet = async (walletId: number, userId: number) => {
 
 const findUniqueWallet = async (id: number) => {
     return await database.wallet.findUnique({
-        where: { id },
+        where: { id }, // Parameterized query
         include: { 
             sharedUsers: true, 
             owner: true,
@@ -91,12 +91,12 @@ const findUniqueWallet = async (id: number) => {
 
 const updateWalletBalance = async (id: number, amount: number, isExpense: boolean) => {
     return await database.wallet.update({
-      where: { id },
-      data: {
-        amount: isExpense
-          ? { decrement: amount }
-          : { increment: amount },
-      },
+        where: { id }, // Parameterized query
+        data: {
+            amount: isExpense
+                ? { decrement: amount }
+                : { increment: amount },
+        },
     });
 };
 

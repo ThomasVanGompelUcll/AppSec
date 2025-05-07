@@ -29,6 +29,7 @@
 import express, { NextFunction, Request, Response } from 'express';
 import subscriptionService from '../service/subscription.service';
 import { SubscriptionInput } from '../types';
+import { z } from 'zod';
 
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
@@ -36,18 +37,17 @@ dotenv.config();
 
 const subscriptionRouter = express.Router();
 
-// Helper function for input validation
-function validateSubscriptionInput(input: any): string | null {
-    if (typeof input.description !== 'string') return 'Invalid description';
-    if (typeof input.amount !== 'number') return 'Invalid amount';
-    if (isNaN(Date.parse(input.startDate))) return 'Invalid startDate';
-    if (isNaN(Date.parse(input.endDate))) return 'Invalid endDate';
-    if (typeof input.expense !== 'boolean') return 'Invalid expense';
-    if (typeof input.frequency !== 'string') return 'Invalid frequency';
-    if (typeof input.Currency !== 'string') return 'Invalid Currency';
-    if (typeof input.wallet !== 'object' || input.wallet === null) return 'Invalid wallet';
-    return null;
-}
+const subscriptionSchema = z.object({
+  description: z.string().min(1),
+  amount: z.number().positive(),
+  startDate: z.string().refine((date) => !isNaN(Date.parse(date)), { message: 'Invalid date' }),
+  endDate: z.string().refine((date) => !isNaN(Date.parse(date)), { message: 'Invalid date' }),
+  expense: z.boolean(),
+  frequency: z.string().min(1),
+  currency: z.string().min(1),
+  walletId: z.number().positive(),
+  userId: z.number().positive(),
+});
 
 /**
  * @swagger
@@ -123,20 +123,22 @@ subscriptionRouter.get('/me', async (req: Request, res: Response) => {
  *             schema:
  *               $ref: '#/components/schemas/Subscription'
  */
-subscriptionRouter.post('/', async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const validationError = validateSubscriptionInput(req.body);
-        if (validationError) {
-            return res.status(400).json({ message: validationError });
-        }
+subscriptionRouter.post('/', async (req: Request, res: Response) => {
+  const parsed = subscriptionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Invalid input', errors: parsed.error.errors });
+  }
 
-        const subscription = <SubscriptionInput>req.body;
-        const result = await subscriptionService.createSubscription({ ...subscription });
-        res.status(201).json(result);
-    } catch (error) {
-        console.error('Error creating subscription:', error);
-        res.status(500).json({ message: 'Internal server error.' });
-    }
+  try {
+    const subscription = await subscriptionService.createSubscription({
+        ...parsed.data,
+        startDate: new Date(parsed.data.startDate),
+        endDate: new Date(parsed.data.endDate),
+    });
+    res.status(201).json(subscription);
+  } catch (error) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 /**

@@ -25,9 +25,10 @@ export interface TransactionInput {
     expense: boolean;
     currency: string;
     amount: number;
-    dateTime: Date;
     walletId: number;
     userId: number;
+    dateTime: Date;
+
 }
 
 export interface SubscriptionInput {

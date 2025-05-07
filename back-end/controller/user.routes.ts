@@ -72,10 +72,12 @@
  */
 import express, { NextFunction, Request, Response } from 'express';
 import userService from '../service/user.service';
-import { UserInput } from '../types'
+import { UserInput } from '../types';
 import jwt from 'jsonwebtoken';
 import { User } from '../model/user'; // Adjust according to your model
 import dotenv from 'dotenv';
+import { z } from 'zod';
+import bcrypt from 'bcrypt';
 
 dotenv.config();
 
@@ -86,6 +88,17 @@ const secretKey = process.env.JWT_SECRET;
 if (!secretKey) {
     throw new Error('JWT secret key is not configured properly.');
 }
+
+const userSchema = z.object({
+    firstName: z.string().min(1),
+    lastName: z.string().min(1),
+    age: z.number().int().min(16).max(120),
+    email: z.string().email(),
+    password: z.string().min(8),
+    phoneNumber: z.string().min(10),
+    personalNumber: z.number(),
+    role: z.enum(['admin', 'owner', 'user']),
+});
 
 /**
  * @swagger
@@ -190,6 +203,24 @@ userRouter.get('/:id', async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Error fetching user by ID:', error.message);
         res.status(500).json({ status: 'error' });
+    }
+});
+
+userRouter.post('/', async (req: Request, res: Response) => {
+    const parsed = userSchema.safeParse(req.body);
+    if (!parsed.success) {
+        return res.status(400).json({ message: 'Invalid input', errors: parsed.error.errors });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(parsed.data.password, 10);
+        const user = await userService.createUser({
+            ...parsed.data,
+            password: hashedPassword,
+        });
+        res.status(201).json(user);
+    } catch (error) {
+        res.status(400).json({ message: 'User creation failed' });
     }
 });
 
