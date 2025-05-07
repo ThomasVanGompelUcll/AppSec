@@ -83,10 +83,23 @@ const userExists = async (email: string): Promise<Boolean> => {
     return !!user;
 };
 
+const updateUser = async (user: { id: number; role: string }) => {
+    return await database.user.update({
+        where: { id: user.id },
+        data: { role: user.role },
+        include: {
+            ownedWallets: true,
+            sharedWallets: true,
+            transactions: true,
+        },
+    });
+};
+
 export default {
     getAllUsers,
     getUserById,
     getUserByEmail,
     createUser,
-    userExists
+    userExists,
+    updateUser,
 };

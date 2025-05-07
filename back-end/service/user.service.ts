@@ -82,4 +82,14 @@ const createUser = async (userInput: UserInput): Promise<User> => {
     return result as any;
 };
 
-export default { getAllUsers, createUser, getUserById, findByEmail };
+const updateUserRole = async (userId: number, role: string) => {
+  const user = await userDb.getUserById(userId);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  user.role = role;
+  return await userDb.updateUser(user);
+};
+
+export default { getAllUsers, createUser, getUserById, findByEmail, updateUserRole };

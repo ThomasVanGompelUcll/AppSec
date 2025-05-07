@@ -1,0 +1,15 @@
+model User {
+    id             Int       @id @default(autoincrement())
+    firstName      String
+    lastName       String
+    age            Int
+    email          String    @unique
+    password       String
+    phoneNumber    String
+    personalNumber String
+    role           String
+    ownedWallets   Wallet[]  @relation("OwnedWallets")
+    sharedWallets  Wallet[]  @relation("SharedWallets")
+    transactions   Transaction[]
+    mfaSecret      String?   // Ensure this field exists
+}

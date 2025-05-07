@@ -224,4 +224,20 @@ userRouter.post('/', async (req: Request, res: Response) => {
     }
 });
 
+userRouter.patch('/:id/role', async (req: Request, res: Response) => {
+  const { role } = req.body;
+  const userId = parseInt(req.params.id);
+
+  if (!['admin', 'owner', 'user'].includes(role)) {
+    return res.status(400).json({ message: 'Invalid role' });
+  }
+
+  try {
+    const updatedUser = await userService.updateUserRole(userId, role);
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update role' });
+  }
+});
+
 export { userRouter };

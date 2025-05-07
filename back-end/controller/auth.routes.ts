@@ -69,7 +69,18 @@ authRouter.post('/login', async (req: Request, res: Response) => {
     const token = generateToken({ id: user.id, role: user.role });
     const refreshToken = generateRefreshToken({ id: user.id });
 
-    return res.json({ token, refreshToken });
+    res.cookie('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    });
+
+    return res.json({ message: 'Login successful' });
   } catch (error) {
     return res.status(500).json({ message: 'Internal server error' });
   }
