@@ -5,6 +5,7 @@ import Head from 'next/head';
 import router from 'next/router';
 import { useEffect, useState } from 'react';
 import styles from '@styles/home.module.css';
+import DOMPurify from 'dompurify';
 
 const validateNotEmpty = (strValue: string): boolean => strValue.trim().length > 0;
 
@@ -162,7 +163,12 @@ const AddWallet: React.FC = () => {
                             className="border p-2 rounded mb-12"
                         />
 
-                        {error && <p className="text-red-500">{error}</p>}
+                        {error && (
+                            <p
+                                className="text-red-500"
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(error) }}
+                            ></p>
+                        )}
 
                         <div className="flex flex-row justify-evenly mb-20">
                             <button

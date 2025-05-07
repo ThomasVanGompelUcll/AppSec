@@ -1,5 +1,6 @@
 import { useState, FormEvent, ChangeEvent } from 'react';
 import { useRouter } from 'next/router';
+import DOMPurify from 'dompurify';
 
 type Role = 'admin' | 'user'; // Adjust according to your role options
 
@@ -88,7 +89,12 @@ const RegisterForm: React.FC = () => {
     return (
         <div className="max-w-md mx-auto mt-8 p-6 border border-gray-300 rounded-lg shadow-md">
             <h3 className="text-2xl font-bold text-center mb-4">Register</h3>
-            {statusMessage && <p className="text-center text-green-600 mb-4">{statusMessage}</p>}
+            {statusMessage && (
+                <p
+                    className="text-center text-green-600 mb-4"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(statusMessage) }}
+                ></p>
+            )}
             <form onSubmit={handleSubmit}>
                 {[
                     { label: 'First Name', name: 'firstName', type: 'text' },

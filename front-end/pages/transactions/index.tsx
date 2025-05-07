@@ -7,6 +7,7 @@ import styles from '@styles/home.module.css';
 import Link from 'next/link';
 import Footer from '@components/footer';
 import { useRouter } from 'next/router';
+import DOMPurify from 'dompurify';
 
 const Transactions: React.FC = () => {
     const [transactions, setTransactions] = useState<Array<Transaction>>([]);
@@ -60,6 +61,12 @@ const Transactions: React.FC = () => {
                     <h1>Transactions</h1>
                 </section>
                 <section className="w-full p-4">
+                    {errorMessage && (
+                        <p
+                            className="text-center text-red-500"
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(errorMessage) }}
+                        ></p>
+                    )}
                     {transactions.length > 0 ? (
                         <TransactionOverviewTable transactions={transactions} />
                     ) : (

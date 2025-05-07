@@ -5,6 +5,7 @@ import Head from 'next/head';
 import router from 'next/router';
 import { useEffect, useState } from 'react';
 import styles from '@styles/home.module.css';
+import DOMPurify from 'dompurify';
 
 type Props = {
     loggedInUserId: number;
@@ -293,7 +294,12 @@ const AddSubscription: React.FC<Props> = ({ loggedInUserId }) => {
                             className="border p-2 rounded"
                         />
 
-                        {error && <p style={{ color: 'red' }}>{error}</p>}
+                        {error && (
+                            <p
+                                style={{ color: 'red' }}
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(error) }}
+                            ></p>
+                        )}
 
                         <div
                             style={{

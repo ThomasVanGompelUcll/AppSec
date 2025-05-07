@@ -4,6 +4,7 @@ import styles from '@styles/userprofile.module.css';
 import { useRouter } from 'next/router';
 import Header from '@components/header';
 import Footer from '@components/footer';
+import DOMPurify from 'dompurify';
 
 const UserProfile: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -76,7 +77,13 @@ const UserProfile: React.FC = () => {
                                     </p>
                                 </>
                             ) : (
-                                <p>No user is currently logged in. Log in to see your details.</p>
+                                <p
+                                    dangerouslySetInnerHTML={{
+                                        __html: DOMPurify.sanitize(
+                                            errorMessage || 'No user is currently logged in.'
+                                        ),
+                                    }}
+                                ></p>
                             )}
                         </div>
                     </div>

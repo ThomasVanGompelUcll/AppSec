@@ -5,6 +5,7 @@ import Head from 'next/head';
 import router from 'next/router';
 import { useEffect, useState } from 'react';
 import styles from '@styles/home.module.css';
+import DOMPurify from 'dompurify';
 
 type Props = {
     loggedInUserId?: number;
@@ -256,7 +257,12 @@ const AddTransaction: React.FC<Props> = ({ loggedInUserId }) => {
                             style={{ marginBottom: '3rem' }}
                         />
 
-                        {error && <p style={{ color: 'red' }}>{error}</p>}
+                        {error && (
+                            <p
+                                style={{ color: 'red' }}
+                                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(error) }}
+                            ></p>
+                        )}
 
                         <div
                             style={{

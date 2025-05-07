@@ -5,6 +5,7 @@ import Header from '@components/header';
 import Footer from '@components/footer';
 import Link from 'next/link';
 import WalletOverviewTable from '@components/wallets/WalletOverviewTable';
+import DOMPurify from 'dompurify';
 
 const UserProfile: FC = () => {
     const [user, setUser] = useState<any | null>(null);
@@ -88,10 +89,12 @@ const UserProfile: FC = () => {
                             {wallets && <WalletOverviewTable wallets={wallets} user={user} />}
                         </section>
                     ) : (
-                        <p className="text-center mt-8">
-                            No user is currently logged in. Log in to manage wallets or view
-                            transactions.
-                        </p>
+                        <p
+                            className="text-center mt-8"
+                            dangerouslySetInnerHTML={{
+                                __html: DOMPurify.sanitize(errorMessage || ''),
+                            }}
+                        ></p>
                     )}
                 </div>
             </main>

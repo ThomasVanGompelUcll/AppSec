@@ -7,6 +7,7 @@ import styles from '@styles/home.module.css';
 import Link from 'next/link';
 import Footer from '@components/footer';
 import { useRouter } from 'next/router';
+import DOMPurify from 'dompurify';
 
 const Subscriptions: React.FC = () => {
     const [subscriptions, setSubscriptions] = useState<Array<SubscriptionInput>>([]);
@@ -71,6 +72,12 @@ const Subscriptions: React.FC = () => {
                     <h1>Subscriptions</h1>
                 </section>
                 <section className="w-full p-4">
+                    {errorMessage && (
+                        <p
+                            className="text-center text-red-500"
+                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(errorMessage) }}
+                        ></p>
+                    )}
                     {subscriptions.length > 0 ? (
                         <SubscriptionOverviewTable subscriptions={subscriptions} />
                     ) : (
