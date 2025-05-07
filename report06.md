@@ -84,15 +84,16 @@ We used prisma, and this uses parameterized queries. This means sql injection at
 
 ## After
 
-Describe in a few sentences what you
-
 - kept in your project
   - parameterized queries
+  - no JSON.parse, this could lead to NoSQL injection
 - changed in your project
+- prevent sql injection
   - using zod to validate input in my api routes.
   - Don't give privilages to users in the database.
-    (explain how you found it, and why you kept/changed it)
-    (if frameworks, libraries already provide defense mechanisms, please explain how and what they actually do)
+- prevent XSS
+  - sanitizing and encoding the user generated content, backend and frontend
+  - use a cps header
 
 ## Code Examples
 
@@ -100,7 +101,15 @@ Describe in a few sentences what you
   - Done in all routes.ts
   - example: auth.routes.ts -> 10 & 15
 - least privilages
+
   - Queries are in .env (commented) -> 7-18
+
+- sanitzing user generated content
+  - done in all the index.tsx files
+    - example: LoginForm.tsx -> 83
+  - done in all routes.ts files
+    - example: auth.routes.ts -> 55 & 103
+- cps header: app.ts -> 21
 
 # Class 04 Vulnerable & Outdated components
 
