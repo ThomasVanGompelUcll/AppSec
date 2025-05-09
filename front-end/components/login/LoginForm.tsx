@@ -50,7 +50,8 @@ const LoginForm: React.FC = () => {
             const response = await fetch('http://localhost:3000/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password }), // Correct the request body
+                credentials: 'include',
+                body: JSON.stringify({ email, password }),
             });
 
             console.log('Response status:', response.status);
@@ -60,16 +61,16 @@ const LoginForm: React.FC = () => {
 
             const { token } = await response.json(); // Expect the token from the response
 
-            if (!token) {
-                console.log('No token returned. Login failed.');
-                setStatusMessage('Email or password is incorrect.');
-                return;
+            console.log(response);
+            if (!response.ok) {
+                throw new Error(`Failed to login. Status code: ${response.status}`);
             }
 
-            console.log('Login successful. Token:', token);
+            // Don’t expect a token from the body if using HttpOnly cookies
+            setStatusMessage('Login successful! Redirecting...');
+            setTimeout(() => router.push('/wallets'), 2000);
 
-            // Store JWT token in sessionStorage (or localStorage)
-            sessionStorage.setItem('authToken', token); // You can use localStorage too if you prefer
+            console.log('Login successful. Token:', token);
 
             // Redirect to a protected route, like '/wallets'
             setStatusMessage('Login successful! Redirecting...');

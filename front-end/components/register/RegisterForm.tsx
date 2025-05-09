@@ -63,15 +63,12 @@ const RegisterForm: React.FC = () => {
         event.preventDefault();
         clearErrors();
 
-        // if (!validate()) {
-        //     return;
-        // }
-
         try {
             const response = await fetch('http://localhost:3000/register', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userInput),
+                credentials: 'include', // Allow cookies to be sent
             });
 
             if (!response.ok) {

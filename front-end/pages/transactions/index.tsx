@@ -26,6 +26,7 @@ const Transactions: React.FC = () => {
                         Authorization: `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
+                    credentials: 'include',
                 });
 
                 if (!response.ok) {
@@ -63,8 +64,14 @@ const Transactions: React.FC = () => {
                 <section className="w-full p-4">
                     {errorMessage && (
                         <p
-                            className="text-center text-red-500"
-                            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(errorMessage) }}
+                            dangerouslySetInnerHTML={{
+                                __html:
+                                    typeof window !== 'undefined'
+                                        ? DOMPurify.sanitize(
+                                              errorMessage || 'No user is currently logged in.'
+                                          )
+                                        : '',
+                            }}
                         ></p>
                     )}
                     {transactions.length > 0 ? (

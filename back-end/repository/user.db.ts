@@ -95,6 +95,12 @@ const updateUser = async (user: { id: number; role: string }) => {
     });
 };
 
+const deleteUser = async (userId: number) => {
+    return await database.user.delete({
+      where: { id: userId },
+    });
+  };
+
 export default {
     getAllUsers,
     getUserById,
@@ -102,4 +108,5 @@ export default {
     createUser,
     userExists,
     updateUser,
+    deleteUser
 };

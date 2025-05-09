@@ -1,53 +1,65 @@
 import { FC, useEffect, useState } from 'react';
-import { User } from '@types'; // Ensure this is correctly defined in your types
 import styles from '@styles/userprofile.module.css';
 import { useRouter } from 'next/router';
 import Header from '@components/header';
 import Footer from '@components/footer';
 import DOMPurify from 'dompurify';
 
-const UserProfile: React.FC = () => {
-    const [user, setUser] = useState<User | null>(null);
-    const router = useRouter();
+const UserProfile: FC = () => {
+    const [user, setUser] = useState<any | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const router = useRouter();
+    const sanitizedError =
+        typeof window !== 'undefined' ? DOMPurify.sanitize(errorMessage || '') : '';
 
     useEffect(() => {
-        const fetchUserDetails = async () => {
-            const token = sessionStorage.getItem('authToken'); // Get the JWT token
-
-            if (!token) {
-                // If no token, redirect to login or show error message
-                setErrorMessage(
-                    'You are not logged in. Please log in to view your profile. heehee'
-                );
-                return;
-            }
-
+        const fetchUserProfile = async () => {
             try {
                 const response = await fetch('http://localhost:3000/users/me', {
                     method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${token}`, // Pass token in Authorization header
-                    },
+                    credentials: 'include',
                 });
 
-                if (!response.ok) {
-                    throw new Error(
-                        `Failed to fetch user details. Status code: ${response.status}`
-                    );
-                }
+                if (response.status === 401) {
+                    const refreshResponse = await fetch('http://localhost:3000/refresh', {
+                        method: 'POST',
+                        credentials: 'include',
+                    });
 
-                const userDetails = await response.json();
-                setUser(userDetails);
+                    if (!refreshResponse.ok) {
+                        throw new Error('Failed to refresh token.');
+                    }
+
+                    const retryResponse = await fetch('http://localhost:3000/users/me', {
+                        method: 'GET',
+                        credentials: 'include',
+                    });
+
+                    if (!retryResponse.ok) {
+                        throw new Error(
+                            `Failed to fetch user profile. Status code: ${retryResponse.status}`
+                        );
+                    }
+
+                    const userProfile = await retryResponse.json();
+                    setUser(userProfile);
+                } else if (!response.ok) {
+                    throw new Error(
+                        `Failed to fetch user profile. Status code: ${response.status}`
+                    );
+                } else {
+                    const userProfile = await response.json();
+                    setUser(userProfile);
+                }
             } catch (error) {
-                console.error('Error fetching user details:', error);
-                setErrorMessage('Failed to load user details. Please try again later.');
+                console.error('Error fetching user profile:', error);
+                setErrorMessage('Failed to load profile. Please try again later.');
             }
         };
 
-        fetchUserDetails();
+        fetchUserProfile();
     }, []);
+
     return (
         <>
             <Header />
@@ -58,32 +70,25 @@ const UserProfile: React.FC = () => {
                             className={styles.profileHeader}
                             style={{ textDecoration: 'underline' }}
                         >
-                            User Profile
+                            Profile
                         </h2>
                         <div className={styles.profileDetails}>
                             {user ? (
-                                <>
+                                <div>
                                     <p>
-                                        <strong>First Name:</strong> {user.firstName}
-                                    </p>
-                                    <p>
-                                        <strong>Last Name:</strong> {user.lastName}
+                                        <strong>Name:</strong> {user.firstName} {user.lastName}
                                     </p>
                                     <p>
                                         <strong>Email:</strong> {user.email}
                                     </p>
                                     <p>
-                                        <strong>Phone Number:</strong> {user.phoneNumber || 'N/A'}
+                                        <strong>Role:</strong> {user.role}
                                     </p>
-                                </>
+                                </div>
+                            ) : errorMessage ? (
+                                <p className="text-danger">{sanitizedError}</p>
                             ) : (
-                                <p
-                                    dangerouslySetInnerHTML={{
-                                        __html: DOMPurify.sanitize(
-                                            errorMessage || 'No user is currently logged in.'
-                                        ),
-                                    }}
-                                ></p>
+                                <p>Loading profile...</p>
                             )}
                         </div>
                     </div>

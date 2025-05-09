@@ -34,7 +34,8 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 
     try {
-        const decoded = verifyToken(token) as { id: number; role: string };
+        const secretKey = process.env.JWT_SECRET_KEY as string;
+        const decoded = verifyToken(token, secretKey) as unknown as { id: number; role: string };
         (req as any).user = decoded;
         next();
     } catch (error) {
@@ -140,19 +141,34 @@ transactionRouter.post('/', async (req: Request, res: Response) => {
  *       401:
  *         description: Unauthorized, token missing or invalid.
  */
-transactionRouter.get('/me', authenticate, async (req: Request, res: Response) => {
-    try {
-        const userId = (req as any).user.id;
-        const transactions = await transactionService.getTransactionByUserId(userId);
+transactionRouter.get('/me', async (req: Request, res: Response) => {
+    const token = req.headers['authorization']?.split(' ')[1];
 
-        if (!transactions) {
+    if (!token) {
+        return res.status(401).json({ message: 'No token provided.' });
+    }
+
+    const secretKey = process.env.JWT_SECRET;
+    if (!secretKey) {
+        console.error('JWT_SECRET not loaded.');
+        return res.status(500).json({ message: 'Server misconfiguration.' });
+    }
+
+    try {
+        const decoded = await verifyToken(token, secretKey) as { id: number };
+        const transactions = await transactionService.getTransactionByUserId(decoded.id);
+
+        if (!transactions || transactions.length === 0) {
             return res.status(404).json({ message: 'Transactions not found.' });
         }
 
-        res.status(200).json(transactions);
+        res.json(transactions);
     } catch (error) {
-        console.error('Error fetching user transactions:', error);
-        res.status(500).json({ message: 'Internal server error.' });
+        if (error instanceof Error && error.message === 'Token has expired') {
+            return res.status(401).json({ message: 'Token has expired. Please log in again.' });
+        }
+        console.error('Token verification failed:', error instanceof Error ? error.message : error);
+        res.status(401).json({ message: 'Invalid or expired token.' });
     }
 });
 

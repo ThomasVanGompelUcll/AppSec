@@ -1,36 +1,28 @@
 // src/middleware/auth.ts
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../util/jwt';
+import { verifyToken, isTokenBlacklisted, ensureSecrets } from '../util/jwt';
 
-const SECRET_KEY = process.env.JWT_SECRET || 'defaultSecret';
+const publicPaths = [/^\/login$/, /^\/signup$/, /^\/public/];
 
-const publicPaths = [
-  '/login',
-  '/register',
-  '/status',
-  '/docs',
-  /^\/docs\/.*/,
-];
-
-export function jwtMiddleware(req: Request, res: Response, next: NextFunction) {
+export async function jwtMiddleware(req: Request, res: Response, next: NextFunction) {
   if (publicPaths.some(path => req.path.match(path))) {
     return next();
   }
 
-  const token = req.cookies?.authToken || req.headers.authorization?.split(' ')[1];
+  const token = req.cookies?.accessToken;
   if (!token) {
-    return res.status(401).json({ message: 'Token missing' });
+    return res.status(401).json({ message: 'Access token missing' });
   }
 
   try {
-    const decoded = verifyToken(token);
-    if (typeof decoded === 'object' && decoded !== null && 'id' in decoded && 'role' in decoded) {
-      (req as any).user = { id: decoded.id, role: decoded.role };
-    } else {
-      return res.status(401).json({ message: 'Invalid token payload' });
-    }
+    await ensureSecrets();
+    const secretKey = process.env.JWT_SECRET || 'defaultSecret';
+
+    const decoded = await verifyToken(token, secretKey);
+
+    (req as any).user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ message: 'Invalid or expired token' });
+    return res.status(401).json({ message: 'Invalid or expired access token' });
   }
 }

@@ -17,13 +17,13 @@ const WalletOverviewTable: React.FC<Props> = ({ wallets }: Props) => {
     const [users, setUsers] = useState<User[]>([]);
 
     useEffect(() => {
-        // Fetch the users from the API
         const fetchUsers = async () => {
             try {
-                const response = await fetch('http://localhost:3000/users/me');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch users');
-                }
+                const response = await fetch('http://localhost:3000/users', {
+                    method: 'GET',
+                    credentials: 'include',
+                });
+
                 const data: User[] = await response.json();
                 setUsers(data);
             } catch (error) {

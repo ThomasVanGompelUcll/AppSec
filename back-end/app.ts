@@ -1,70 +1,76 @@
+// src/app.ts
 import * as dotenv from 'dotenv';
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
 import * as bodyParser from 'body-parser';
 import swaggerJSDoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
-import helmet from 'helmet'; // Import Helmet
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { userRouter } from './controller/user.routes';
 import { walletRouter } from './controller/wallet.routes';
 import { subscriptionRouter } from './controller/subscription.routes';
 import { transactionRouter } from './controller/transaction.routes';
 import { authRouter } from './controller/auth.routes';
+import { ensureSecrets } from './util/jwt';
 
-const app = express();
 dotenv.config();
+const app = express();
 const port = process.env.APP_PORT || 3000;
 
-app.use(cors({ origin: 'http://localhost:8080' }));
-app.use(bodyParser.json());
+(async () => {
+    try {
+        await ensureSecrets();
 
-app.use(
-    helmet.contentSecurityPolicy({
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "https://cdn.jsdelivr.net"],
-          styleSrc: ["'self'", "https://fonts.googleapis.com"],
-          fontSrc: ["'self'", "https://fonts.gstatic.com"],
-          objectSrc: ["'none'"],
-          upgradeInsecureRequests: [],
-        },
-      })
-);
+        app.use((req, res, next) => {
+            if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+                return res.redirect('https://' + req.headers.host + req.url);
+            }
+            next();
+        });
 
-app.use("/users", userRouter);
-app.use("/wallets", walletRouter);
-app.use("/subscriptions", subscriptionRouter);
-app.use("/transactions", transactionRouter);
-app.use("/", authRouter);
+        app.use(helmet());
+        app.use(bodyParser.json());
+        app.use(cookieParser());
 
-app.get('/status', (req, res) => {
-    res.json({ message: 'Courses API is running...' });
-});
+        app.use(cors({
+            origin: 'http://localhost:8084',
+            credentials: true,
+        }));
 
-const swaggerOpts = {
-    definition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'Courses API',
-            version: '1.0.0',
-        },
-    },
-    apis: ['./controller/*.routes.ts'],
-};
-const swaggerSpec = swaggerJSDoc(swaggerOpts);
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+        app.use((req, res, next) => {
+            res.setHeader('Access-Control-Allow-Credentials', 'true');
+            next();
+        });
 
-app.listen(port || 3000, () => {
-    console.log(`Courses API is running on port ${port}.`);
-});
+        app.use("/users", userRouter);
+        app.use("/wallets", walletRouter);
+        app.use("/subscriptions", subscriptionRouter);
+        app.use("/transactions", transactionRouter);
+        app.use("/", authRouter);
 
-// app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-//     if (err.name === 'UnauthorizedError') {
-//         res.status(401).json({ status: 'unauthorized', message: err.message });
-//     } else if (err.name === 'CoursesError') {
-//         res.status(400).json({ status: 'domain error', message: err.message });
-//     } else {
-//         res.status(400).json({ status: 'application error', message: err.message });
-//     }
-// });
+        app.get('/status', (req, res) => {
+            res.json({ message: 'Courses API is running...' });
+        });
 
+        const swaggerOpts = {
+            definition: {
+                openapi: '3.0.0',
+                info: {
+                    title: 'Courses API',
+                    version: '1.0.0',
+                },
+            },
+            apis: ['./controller/*.routes.ts'],
+        };
+        const swaggerSpec = swaggerJSDoc(swaggerOpts);
+        app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
+        app.listen(port, () => {
+            console.log(`Courses API is running on port ${port}.`);
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+})();

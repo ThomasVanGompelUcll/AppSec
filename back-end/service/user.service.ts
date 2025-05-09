@@ -41,45 +41,38 @@ const findByEmail = async (userEmail: string) => {
 };
 
 const createUser = async (userInput: UserInput): Promise<User> => {
-    if (!userInput.email || typeof userInput.email !== 'string') {
-        throw new Error('Email is required and must be a string');
-    }
+  if (!userInput.email || typeof userInput.email !== 'string') {
+    throw new Error('Email is required and must be a string');
+  }
 
-    // Check if the user already exists
-    const existingUser = await userDb.userExists(userInput.email);
-    if (existingUser) throw new Error('User with this email already exists');
+  validatePassword(userInput.password);
 
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(userInput.password, SALT_ROUNDS);
+  const existingUser = await userDb.userExists(userInput.email);
+  if (existingUser) throw new Error('User with this email already exists');
 
-    // Replace the plain password with the hashed password
-    const userToSave = { ...userInput, password: hashedPassword };
+  const newUser = await userDb.createUser(userInput);
 
-    // Save the user to the database
-    const newUser = await userDb.createUser(userToSave);
+  const result = {
+    ...newUser,
+    wallets: {
+      owned: newUser.ownedWallets.map(wallet => ({
+        id: wallet.id,
+        currency: wallet.currency,
+        creationDate: wallet.creationDate,
+        amount: wallet.amount,
+        ownerId: wallet.ownerId,
+      })),
+      shared: newUser.sharedWallets.map(wallet => ({
+        id: wallet.id,
+        currency: wallet.currency,
+        creationDate: wallet.creationDate,
+        amount: wallet.amount,
+        ownerId: wallet.ownerId,
+      })),
+    },
+  };
 
-    // Format the result to include owned and shared wallets
-    const result = {
-        ...newUser,
-        wallets: {
-            owned: newUser.ownedWallets.map(wallet => ({
-                id: wallet.id,
-                currency: wallet.currency,
-                creationDate: wallet.creationDate,
-                amount: wallet.amount,
-                ownerId: wallet.ownerId,
-            })),
-            shared: newUser.sharedWallets.map(wallet => ({
-                id: wallet.id,
-                currency: wallet.currency,
-                creationDate: wallet.creationDate,
-                amount: wallet.amount,
-                ownerId: wallet.ownerId,
-            })),
-        },
-    };
-
-    return result as any;
+  return result as any;
 };
 
 const updateUserRole = async (userId: number, role: string) => {
@@ -92,4 +85,29 @@ const updateUserRole = async (userId: number, role: string) => {
   return await userDb.updateUser(user);
 };
 
-export default { getAllUsers, createUser, getUserById, findByEmail, updateUserRole };
+const validatePassword = (password: string): void => {
+    const passwordPolicy = [
+      { regex: /.{8,}/, message: 'Password must be at least 8 characters long' },
+      { regex: /[A-Z]/, message: 'Password must contain at least one uppercase letter' },
+      { regex: /[a-z]/, message: 'Password must contain at least one lowercase letter' },
+      { regex: /[0-9]/, message: 'Password must contain at least one number' },
+      { regex: /[@$!%*?&#]/, message: 'Password must contain at least one special character' },
+    ];
+  
+    for (const rule of passwordPolicy) {
+      if (!rule.regex.test(password)) {
+        throw new Error(rule.message);
+      }
+    }
+};
+
+const deleteUser = async (userId: number): Promise<void> => {
+    const user = await userDb.getUserById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+  
+    await userDb.deleteUser(userId);
+  };
+
+export default { getAllUsers, createUser, getUserById, findByEmail, updateUserRole, deleteUser };

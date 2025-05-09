@@ -1,31 +1,85 @@
+// src/util/jwt.ts
 import jwt from 'jsonwebtoken';
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import * as dotenv from 'dotenv';
 
-const SECRET_KEY = process.env.JWT_SECRET || 'defaultSecret';
-const REFRESH_SECRET_KEY = process.env.REFRESH_SECRET || 'defaultRefreshSecret';
-const TOKEN_EXPIRATION = '15m'; // Short-lived token
-const REFRESH_TOKEN_EXPIRATION = '7d'; // Refresh token expiration
+dotenv.config();
 
-const tokenBlacklist = new Set<string>(); // In-memory blacklist (use a database for production)
+const region = process.env.AWS_DEFAULT_REGION || 'eu-central-1';
+const client = new SecretsManagerClient({ region });
 
-export const generateToken = (payload: object) => {
-    return jwt.sign(payload, SECRET_KEY, { expiresIn: TOKEN_EXPIRATION });
-};
+let secretsLoaded = false;
+const tokenBlacklist = new Set<string>();
 
-export const generateRefreshToken = (payload: object) => {
-    return jwt.sign(payload, REFRESH_SECRET_KEY, { expiresIn: REFRESH_TOKEN_EXPIRATION });
-};
+export const TOKEN_EXPIRATION = '1m';
+export const REFRESH_TOKEN_EXPIRATION = '7d';
 
-export const verifyToken = (token: string) => {
-    if (tokenBlacklist.has(token)) {
-        throw new Error('Token has been revoked');
+/**
+ * Fetch and cache secrets from AWS Secrets Manager.
+ */
+export async function ensureSecrets() {
+  if (secretsLoaded) return;
+
+  const secretName = process.env.JWT_SECRET_NAME || 'JWT_SECRET';
+
+  if (!/^[a-zA-Z0-9-/_+=.@!]+$/.test(secretName)) {
+    throw new Error('Invalid secret name. Must contain only alphanumeric characters or -/_+=.@!');
+  }
+
+  try {
+    const command = new GetSecretValueCommand({ SecretId: secretName });
+    const data = await client.send(command);
+
+    if (!data.SecretString) throw new Error('SecretString is empty');
+
+    const parsed = JSON.parse(data.SecretString);
+    process.env.JWT_SECRET = parsed.JWT_SECRET;
+    process.env.JWT_REFRESH_SECRET = parsed.JWT_REFRESH_SECRET;
+
+    if (!process.env.JWT_SECRET || !process.env.JWT_REFRESH_SECRET) {
+      throw new Error('Missing expected keys in secret');
     }
-    return jwt.verify(token, SECRET_KEY);
+
+    secretsLoaded = true;
+  } catch (error) {
+    console.error('Failed to retrieve secret:', (error as Error).message);
+    throw error;
+  }
+}
+
+export const generateToken = (payload: object): string => {
+  const secret = process.env.JWT_SECRET || 'defaultSecret';
+  return jwt.sign(payload, secret, { expiresIn: TOKEN_EXPIRATION });
 };
 
-export const verifyRefreshToken = (token: string) => {
-    return jwt.verify(token, REFRESH_SECRET_KEY);
+export const generateRefreshToken = (payload: object): string => {
+  const secret = process.env.JWT_REFRESH_SECRET || 'defaultRefreshSecret';
+  return jwt.sign(payload, secret, { expiresIn: REFRESH_TOKEN_EXPIRATION });
 };
 
-export const revokeToken = (token: string) => {
-    tokenBlacklist.add(token);
+export const verifyToken = async (token: string, secretKey: string): Promise<any> => {
+  console.log("verifying token:", token, "with secret: ", secretKey)
+  return new Promise((resolve, reject) => {
+    jwt.verify(token, secretKey, (err, decoded) => {
+      if (err) {
+        if (err.name === 'TokenExpiredError') {
+          return reject(new Error('Token has expired'));
+        }
+        return reject(err);
+      }
+      resolve(decoded);
+    });
+  });
+};
+
+export const blacklistToken = (token: string): void => {
+  tokenBlacklist.add(token);
+};
+
+export const isTokenBlacklisted = (token: string): boolean => {
+  return tokenBlacklist.has(token);
+};
+
+export const revokeToken = (token: string): void => {
+  tokenBlacklist.add(token);
 };
